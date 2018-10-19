@@ -2,12 +2,16 @@ package com.georgeneokq.dressup;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.PointF;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
@@ -42,14 +46,19 @@ public class DressUpActivity extends AppCompatActivity {
 
     Uri currentPhotoUri;
 
+    /*
+     * For image dragging
+     */
+    RelativeLayout playground;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dress_up);
 
-        imageView = (ImageView) findViewById(R.id.imageView);
-
-        imageGallery = (RelativeLayout) findViewById(R.id.relativeLayout);
+        imageView = findViewById(R.id.imageView);
+        imageGallery = findViewById(R.id.imageGallery);
+        playground = findViewById(R.id.playground);
 
         ImageUtil.enableHorizontalImageGallery(DressUpActivity.this, imageGallery, imageResourceIds, 20, imageOnClickListener);
 
@@ -117,9 +126,94 @@ public class DressUpActivity extends AppCompatActivity {
     private View.OnClickListener imageOnClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            int id = v.getId();
 
-            Util.toast(DressUpActivity.this, "You clicked item " + Integer.toString(id));
+            // Cast to ImageView type
+            ImageView image = (ImageView) v;
+
+            // Get image drawable
+            Drawable drawable = image.getDrawable();
+
+            // Create a new ImageView to be appended to the playground
+            ImageView newImage = new ImageView(DressUpActivity.this);
+
+            // Set new image's drawable
+            newImage.setImageDrawable(drawable);
+
+            // Get resourceID from tag
+            int resourceId = Integer.parseInt((String) image.getTag());
+
+            // Get image original dimensions in pixels
+            ImageUtil.ImageDimensions imageDimensions = ImageUtil.getImageDimensionsFromResource(DressUpActivity.this, resourceId);
+
+            int imgOriginalWidth = imageDimensions.getWidth();
+            int imgOriginalHeight = imageDimensions.getHeight();
+
+            // Calculate suitable width and height to use
+            int newHeight = playground.getHeight() / 2; // Let image height be half of container's height
+            float ratio = imgOriginalHeight / newHeight;
+            int newWidth = (int) (imgOriginalWidth / ratio + 0.5f); // Adjust width according to image dimensions ratio
+
+            // Setup layout parameters.
+            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(newWidth, newHeight);
+
+            // Align to parent start and parent top to set image coordinates according to top and left
+            params.addRule(RelativeLayout.ALIGN_PARENT_START, RelativeLayout.TRUE);
+            params.addRule(RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE);
+
+            // Set layout parameters
+            newImage.setLayoutParams(params);
+
+            // Previous point refers to the original point the finger touches
+            final PointF previousPoint = new PointF();
+
+            // Set image drag listener
+            newImage.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) v.getLayoutParams();
+
+                    switch(event.getAction()) {
+
+                        case MotionEvent.ACTION_DOWN:
+                            previousPoint.x = event.getX();
+                            previousPoint.y = event.getY();
+                            break;
+
+                        case MotionEvent.ACTION_MOVE:
+
+                            float dx = event.getX() - previousPoint.x;
+                            float dy = event.getY() - previousPoint.y;
+
+                            params.leftMargin += dx;
+                            params.topMargin += dy;
+
+                            // Check for boundaries, do not let image get out of bounds
+                            if(params.leftMargin < 0)
+                                params.leftMargin = 0;
+
+                            if(params.leftMargin + v.getWidth() > playground.getWidth())
+                                params.leftMargin = playground.getWidth() - v.getWidth();
+
+                            if(params.topMargin < 0)
+                                params.topMargin = 0;
+
+                            if(params.topMargin + v.getHeight() > playground.getHeight())
+                                params.topMargin = playground.getHeight() - v.getHeight();
+
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    v.setLayoutParams(params);
+
+                    return true;
+                }
+            });
+
+            // Append to playground
+            playground.addView(newImage);
         }
     };
 }

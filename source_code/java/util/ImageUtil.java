@@ -73,7 +73,7 @@ public class ImageUtil extends Util {
                     int newWidth = (int) (imgWidth / ratio + 0.5f); // Round off to nearest integer
 
                     // Set image dimensions
-                    RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) new RelativeLayout.LayoutParams(newWidth, newHeight);
+                    RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(newWidth, newHeight);
 
                     // If there was an item inserted before the current one, align beside the previous item and add a margin
                     if(i != 0) {
@@ -97,10 +97,12 @@ public class ImageUtil extends Util {
                     // Set onClickListener for the image
                     image.setOnClickListener(onClickListener);
 
+                    // Add resourceId as a tag
+                    image.setTag(String.valueOf(resourceId));
+
                     // Append imageview to relativelayout
                     imageGallery.addView(image);
                 }
-
             }
         });
     }
